@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="dslab3" default="compile" basedir=".">
+
+	<property name="src.dir" value="src"/>
+	<property name="build.dir" value="build"/>
+	<property name="lib.dir" value="lib"/>
+
+	<path id="project.classpath">
+		<fileset dir="${lib.dir}">
+			<include name="log4j-1.2.16.jar"/>
+			<include name="bcprov-jdk16-144.jar"/>
+		</fileset>
+		<pathelement location="${build.dir}"/>
+	</path>
+	
+	<assertions id="project.assertions">
+		<enable/>
+	</assertions>
+
+	<target name="compile" description="Compile project.">
+		<mkdir dir="${build.dir}"/>
+		<javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="project.classpath" debug="true" deprecation="true" includeantruntime="false"/>
+		<copy todir="${build.dir}">
+			<fileset dir="${src.dir}">
+				<include name="*.properties"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="run-manager" depends="compile" description="Run Manager.">
+		<java classname="your.ManagementComponent" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<arg value="yourBindingName"/>
+			<!-- bindingName -->
+			<arg value="localhost"/>
+			<!-- schedulerHost -->
+			<!-- <arg value="10000 + dslabXXX * 10"/> -->
+			<!-- schedulerTCPPort -->
+			<arg value="30"/>
+			<!-- costs -->
+			<arg value="xyz"/>
+			<!-- optional taskDir -->
+		</java>
+	</target>
+
+	<target name="run-scheduler" depends="compile" description="Run Scheduler.">
+		<java classname="your.Scheduler" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<!-- <arg value="10000 + dslabXXX * 10"/> -->
+			<!-- tcpPort -->
+			<arg value="10000 + dslabXXX * 10 + 1"/>
+			<!-- udpPort -->
+			<arg value="3"/>
+			<!-- minimum of active generic task engines -->
+			<arg value="5"/>
+			<!-- maximum of active generic task engines -->
+			<arg value="3000"/>
+			<!-- fileserverTimeout -->
+			<arg value="1000"/>
+			<!-- checkPeriod -->
+		</java>
+	</target>
+
+	<target name="run-client" depends="compile" description="Run client.">
+		<java classname="your.Client" fork="true" classpathref="project.classpath">
+	<assertions refid="project.assertions"/>
+			<arg value="yourBindingName"/>
+			<!-- binding name of the management component -->
+			<arg value="your/clientDir"/>
+			<!-- taskDir -->
+		</java>
+	</target>
+
+	<target name="run-gtengine1" depends="compile" description="Run 1st Generic Task Engine.">
+		<java classname="your.GenericTaskEngine" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<arg value="10000 + dslabXXX * 10 + 2"/>
+			<!-- tcpPort -->
+			<arg value="localhost"/>
+			<!-- schedulerHost -->
+			<arg value="10000 + dslabXXX * 10 + 1"/>
+			<!-- schedulerUDPPort -->
+			<arg value="1000"/>
+			<!-- alivePeriod -->
+			<arg value="90"/>
+			<!-- minConsumption (consumption after start-up) -->
+			<arg value="240"/>
+			<!-- maxConsumption (consumption at 100% load) -->
+			<arg value="your/engine1Dir"/>
+			<!-- taskDir -->
+		</java>
+	</target>
+
+	<target name="run-gtengine2" depends="compile" description="Run 2nd Generic Task Engine.">
+		<java classname="your.GenericTaskEngine" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<arg value="10000 + dslabXXX * 10 + 3"/>
+			<!-- tcpPort -->
+			<arg value="localhost"/>
+			<!-- schedulerHost -->
+			<arg value="10000 + dslabXXX * 10 + 1"/>
+			<!-- schedulerUDPPort -->
+			<arg value="1000"/>
+			<!-- alivePeriod -->
+			<arg value="90"/>
+			<!-- minConsumption (consumption after start-up) -->
+			<arg value="250"/>
+			<!-- maxConsumption (consumption at 100% load) -->
+			<arg value="your/engine2Dir"/>
+			<!-- taskDir -->
+		</java>
+	</target>
+
+	<target name="run-gtengine3" depends="compile" description="Run 3rd Generic Task Engine.">
+		<java classname="your.GenericTaskEngine" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<arg value="10000 + dslabXXX * 10 + 4"/>
+			<!-- tcpPort -->
+			<arg value="localhost"/>
+			<!-- schedulerHost -->
+			<arg value="10000 + dslabXXX * 10 + 1"/>
+			<!-- schedulerUDPPort -->
+			<arg value="1000"/>
+			<!-- alivePeriod -->
+			<arg value="90"/>
+			<!-- minConsumption (consumption after start-up) -->
+			<arg value="260"/>
+			<!-- maxConsumption (consumption at 100% load) -->
+			<arg value="your/engine3Dir"/>
+			<!-- taskDir -->
+		</java>
+	</target>
+
+	<target name="run-gtengine4" depends="compile" description="Run 4th Generic Task Engine.">
+		<java classname="your.GenericTaskEngine" fork="true" classpathref="project.classpath">
+			<assertions refid="project.assertions"/>
+			<arg value="10000 + dslabXXX * 10 + 5"/>
+			<!-- tcpPort -->
+			<arg value="localhost"/>
+			<!-- schedulerHost -->
+			<arg value="10000 + dslabXXX * 10 + 1"/>
+			<!-- schedulerUDPPort -->
+			<arg value="1000"/>
+			<!-- alivePeriod -->
+			<arg value="110"/>
+			<!-- minConsumption (consumption after start-up) -->
+			<arg value="200"/>
+			<!-- maxConsumption (consumption at 100% load) -->
+			<arg value="your/engine4Dir"/>
+			<!-- taskDir -->
+		</java>
+	</target>
+
+	<target name="clean" description="Clean build products.">
+		<delete dir="${build.dir}"/>
+	</target>
+
+	<target name="rebuild" depends="clean, compile" description="Clean and build products."/>
+</project>

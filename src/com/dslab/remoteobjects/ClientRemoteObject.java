@@ -13,6 +13,7 @@ import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.omg.CORBA.Object;
 
@@ -25,6 +26,7 @@ import com.dslab.entities.TaskEntity;
 import com.dslab.management.ManagementServiceHelper;
 import com.dslab.management.ManagementServiceModel;
 import com.dslab.management.ManagementTcpEngineWorker;
+import com.dslab.management.ManagementTcpEngineWorkerDistributed;
 
 public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObjectInterface {
 
@@ -236,7 +238,8 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 							+ " credits) Buy new credits for retrieving the output.";
 
 				} else {
-					returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputText();
+					returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().get(0)
+							.toString();
 					ManagementServiceHelper.getTaskForId(model.getTasks(), id).setPayed(true);
 					activeCompany.setCredits(activeCompany.getCredits()
 							- ManagementServiceHelper.getTaskForId(model.getTasks(), id).getCosts());
@@ -244,7 +247,7 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				}
 
 			} else {
-				returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputText();
+				returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().get(0).toString();
 			}
 		} else {
 			returnValue = "Error: Task " + id + " does not belong to your company.";
@@ -304,6 +307,7 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				activeCompany.setCallback(callback);
 				ManagementServiceModel.setCurrentRequestedTask(currentTask);
 				currentTask.setDistributedAmount(amount);
+				currentTask.setOutputs(new HashMap());
 				BufferedReader inFromServer = new BufferedReader(new InputStreamReader(model.getSchedulerSocket()
 						.getInputStream()));
 				DataOutputStream outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
@@ -318,12 +322,13 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 					}
 				}
 
-				for (int i = 0; i < amount; i++) {
+				for (GenericTaskEngineEntity currentEngine : engines) {
 					model.setSchedulerSocket(new Socket(ManagementServiceModel.getCurrentRequestedTask()
 							.getAssignedEngine().getIp(), ManagementServiceModel.getCurrentRequestedTask()
 							.getAssignedEngine().getTcpPort()));
-					Runnable worker = new ManagementTcpEngineWorker(new Socket(engines.get(i).getIp(), engines.get(i)
-							.getTcpPort()), ManagementServiceModel.getCurrentRequestedTask(), model);
+					Runnable worker = new ManagementTcpEngineWorkerDistributed(new Socket(currentEngine.getIp(),
+							currentEngine.getTcpPort()), ManagementServiceModel.getCurrentRequestedTask(), model,
+							amount);
 					model.getExecutorTcp().execute(worker);
 					// } else {
 					// ManagementServiceModel.getCurrentRequestedTask().setStatus(TaskStatusEnum.prepared);
@@ -331,12 +336,8 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 					// .printInfo(response.split("#")[0]);
 					// }
 				}
-				ManagementServiceHelper
-						.getCompanyForName(response.split("#")[1], model)
-						.getCallback()
-						.printInfo(
-								"Execution for task " + ManagementServiceModel.getCurrentRequestedTask().getId()
-										+ " started.");
+				activeCompany.getCallback().printInfo(
+						"Execution for task " + ManagementServiceModel.getCurrentRequestedTask().getId() + " started.");
 
 			} catch (UnknownHostException e) {
 				System.out.println("Server not responding.");

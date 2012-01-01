@@ -13,7 +13,6 @@ import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import org.omg.CORBA.Object;
 
@@ -27,6 +26,7 @@ import com.dslab.management.ManagementServiceHelper;
 import com.dslab.management.ManagementServiceModel;
 import com.dslab.management.ManagementTcpEngineWorker;
 import com.dslab.management.ManagementTcpEngineWorkerDistributed;
+import com.dslab.management.ManagementTcpSchedulerListenerWorker;
 
 public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObjectInterface {
 
@@ -123,8 +123,8 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 	}
 
 	private void startSchedulerListener() {
-		// Runnable task = new ManagementTcpSchedulerListenerWorker(model);
-		// model.getExecutorTcp().execute(task);
+		Runnable task = new ManagementTcpSchedulerListenerWorker(model);
+		model.getExecutorTcp().execute(task);
 	}
 
 	@Override
@@ -133,7 +133,7 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 		if (model.getSchedulerSocket() == null) {
 			try {
 				model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
-				startSchedulerListener();
+				// startSchedulerListener();
 			} catch (UnknownHostException e) {
 				return "Error: Scheduler is not reachable";
 			} catch (IOException e) {
@@ -189,6 +189,131 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 		}
 		return "";
 	}
+
+	@Override
+	public String executeDistributedForId(int id, int amount, ClientCallbackRemoteObjectInterface callback, String call)
+			throws RemoteException {
+		if (model.getSchedulerSocket() == null) {
+			try {
+				model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
+				// startSchedulerListener();
+			} catch (UnknownHostException e) {
+				return "Error: Scheduler is not reachable";
+			} catch (IOException e) {
+				return "Error: Scheduler is not reachable";
+			}
+		}
+		TaskEntity currentTask = ManagementServiceHelper.getTaskForId(model.getTasks(), id);
+		if (currentTask == null) {
+			return "Error: Task " + id + " does not exist.";
+		} else if (currentTask.getStatus() == TaskStatusEnum.executing) {
+			return "Error: Execution has already been started.";
+		} else if (currentTask.getOwnerCompany() != activeCompany) {
+			throw new RemoteException();
+		} else {
+			currentTask.setCall(call);
+			currentTask.setStatus(TaskStatusEnum.executing);
+			currentTask.setCosts(0);
+			try {
+				// clientModel.setInput(input);
+				activeCompany.setCallback(callback);
+				model.setCurrentRequestedTask(currentTask);
+				ArrayList<GenericTaskEngineEntity> engines = new ArrayList<GenericTaskEngineEntity>();
+				BufferedReader inFromServer = new BufferedReader(new InputStreamReader(model.getSchedulerSocket()
+						.getInputStream()));
+				DataOutputStream outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
+				outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName()
+						+ "\n");
+				String response = null;
+				for (int i = 0; i < amount; i++) {
+					outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " "
+							+ activeCompany.getName() + "\n");
+
+					response = inFromServer.readLine();
+					if (response.split(" ")[0].equals("!requestEngine")) {
+						engines.add(new GenericTaskEngineEntity(response.split(" ")[1], Integer.parseInt(response
+								.split(" ")[2])));
+					}
+				}
+				model.getCurrentRequestedTask().setDistributedAmount(amount);
+				// String response = inFromServer.readLine();
+
+				// for (GenericTaskEngineEntity currentEngine : engines) {
+				// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
+				// .printInfo("Execution for task " + model.getCurrentRequestedTask().getId() + " started.");
+				//
+				// model.setSchedulerSocket(new Socket(model.getCurrentRequestedTask().getAssignedEngine().getIp(),
+				// model.getCurrentRequestedTask().getAssignedEngine().getTcpPort()));
+				// Runnable worker = new ManagementTcpEngineWorker(model.getSchedulerSocket(),
+				// model.getCurrentRequestedTask(), model);
+				// model.getExecutorTcp().execute(worker);
+				// }
+
+				// if (response.split(" ")[0].equals("!requestEngine")) {
+				int count = 1;
+				for (GenericTaskEngineEntity currentEngine : engines) {
+					model.getCurrentRequestedTask().setAssignedEngine(
+							new GenericTaskEngineEntity(response.split(" ")[1],
+									Integer.parseInt(response.split(" ")[2])));
+					Runnable worker = new ManagementTcpEngineWorkerDistributed(new Socket(currentEngine.getIp(),
+							currentEngine.getTcpPort()), model.getCurrentRequestedTask(), model, count, amount);
+					model.getExecutorTcp().execute(worker);
+					count++;
+				}
+				ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
+						.printInfo("Execution for task " + model.getCurrentRequestedTask().getId() + " started.");
+				// } else {
+				// System.out.println("Server: " + response);
+				// model.getCurrentRequestedTask().setStatus(TaskStatusEnum.prepared);
+				// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
+				// .printInfo(response.split("#")[0]);
+				// }
+
+			} catch (UnknownHostException e) {
+				System.out.println("Server not responding.");
+			} catch (IOException e) {
+				System.out.println(e.getMessage());
+			}
+		}
+		return "";
+	}
+
+	// public String dexecuteDistributedForId(int id, int amount, ClientCallbackRemoteObjectInterface callback, String
+	// call) throws RemoteException { if (model.getSchedulerSocket() == null) { try {
+	// model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort())); //
+	// startSchedulerListener(); } catch (UnknownHostException e) { return "Error: Scheduler is not reachable"; } catch
+	// (IOException e) { return "Error: Scheduler is not reachable"; } } TaskEntity currentTask =
+	// ManagementServiceHelper.getTaskForId(model.getTasks(), id); if (currentTask == null) { return "Error: Task " + id
+	// + " does not exist."; } else if (currentTask.getStatus() == TaskStatusEnum.executing) { return
+	// "Error: Execution has already been started."; } else if (currentTask.getOwnerCompany() != activeCompany) { throw
+	// new RemoteException(); } else { currentTask.setCall(call); currentTask.setStatus(TaskStatusEnum.executing);
+	// currentTask.setCosts(0); try { ArrayList<GenericTaskEngineEntity> engines = new
+	// ArrayList<GenericTaskEngineEntity>();
+	//
+	// activeCompany.setCallback(callback); ManagementServiceModel.setCurrentRequestedTask(currentTask);
+	// currentTask.setDistributedAmount(amount); currentTask.setOutputs(new HashMap()); BufferedReader inFromServer =
+	// new BufferedReader(new InputStreamReader(model.getSchedulerSocket() .getInputStream())); DataOutputStream
+	// outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream()); for (int i = 0; i < amount;
+	// i++) { outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName() +
+	// "\n");
+	//
+	// String response = inFromServer.readLine(); if (response.split(" ")[0].equals("!requestEngine")) { engines.add(new
+	// GenericTaskEngineEntity(response.split(" ")[1], Integer.parseInt(response .split(" ")[2]))); } //
+	// System.out.println(currentEngine.getIp()); // System.out.println(currentEngine.getTcpPort()); Socket s = new
+	// Socket(response.split(" ")[1], Integer.parseInt(response.split(" ")[2])); Socket s2 = new Socket("localhost",
+	// 13492); // Runnable worker = new ManagementTcpEngineWorkerDistributed(new Socket(currentEngine.getIp(), //
+	// currentEngine.getTcpPort()), ManagementServiceModel.getCurrentRequestedTask(), model, part, // amount); //
+	// part++; // model.getExecutorTcp().execute(worker); }
+	//
+	// int part = 1; for (GenericTaskEngineEntity currentEngine : engines) {
+	//
+	// // } else { // ManagementServiceModel.getCurrentRequestedTask().setStatus(TaskStatusEnum.prepared); //
+	// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback() //
+	// .printInfo(response.split("#")[0]); // } } activeCompany.getCallback().printInfo( "Execution for task " +
+	// ManagementServiceModel.getCurrentRequestedTask().getId() + " started.");
+	//
+	// } catch (UnknownHostException e) { System.out.println("Server not responding."); } catch (IOException e) {
+	// System.out.println(e.getMessage()); } } return ""; }
 
 	@Override
 	public String getTaskInfoForId(int id) throws RemoteException {
@@ -247,7 +372,16 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				}
 
 			} else {
-				returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().get(0).toString();
+				if (ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().size() > 1) {
+					for (int x = 1; x < ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().size() + 1; x++) {
+						returnValue = returnValue
+								+ ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().get(x)
+										.toString();
+					}
+				} else {
+					returnValue = ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOutputs().get(0)
+							.toString();
+				}
 			}
 		} else {
 			returnValue = "Error: Task " + id + " does not belong to your company.";
@@ -277,74 +411,4 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 		return null;
 	}
 
-	@Override
-	public String executeDistributedForId(int id, int amount, ClientCallbackRemoteObjectInterface callback, String call)
-			throws RemoteException {
-		if (model.getSchedulerSocket() == null) {
-			try {
-				model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
-				startSchedulerListener();
-			} catch (UnknownHostException e) {
-				return "Error: Scheduler is not reachable";
-			} catch (IOException e) {
-				return "Error: Scheduler is not reachable";
-			}
-		}
-		TaskEntity currentTask = ManagementServiceHelper.getTaskForId(model.getTasks(), id);
-		if (currentTask == null) {
-			return "Error: Task " + id + " does not exist.";
-		} else if (currentTask.getStatus() == TaskStatusEnum.executing) {
-			return "Error: Execution has already been started.";
-		} else if (currentTask.getOwnerCompany() != activeCompany) {
-			throw new RemoteException();
-		} else {
-			currentTask.setCall(call);
-			currentTask.setStatus(TaskStatusEnum.executing);
-			currentTask.setCosts(0);
-			try {
-				ArrayList<GenericTaskEngineEntity> engines = new ArrayList<GenericTaskEngineEntity>();
-
-				activeCompany.setCallback(callback);
-				ManagementServiceModel.setCurrentRequestedTask(currentTask);
-				currentTask.setDistributedAmount(amount);
-				currentTask.setOutputs(new HashMap());
-				BufferedReader inFromServer = new BufferedReader(new InputStreamReader(model.getSchedulerSocket()
-						.getInputStream()));
-				DataOutputStream outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
-				for (int i = 0; i < amount; i++) {
-					outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " "
-							+ activeCompany.getName() + "\n");
-
-					String response = inFromServer.readLine();
-					if (response.split(" ")[0].equals("!requestEngine")) {
-						engines.add(new GenericTaskEngineEntity(response.split(" ")[1], Integer.parseInt(response
-								.split(" ")[2])));
-					}
-				}
-
-				for (GenericTaskEngineEntity currentEngine : engines) {
-					model.setSchedulerSocket(new Socket(ManagementServiceModel.getCurrentRequestedTask()
-							.getAssignedEngine().getIp(), ManagementServiceModel.getCurrentRequestedTask()
-							.getAssignedEngine().getTcpPort()));
-					Runnable worker = new ManagementTcpEngineWorkerDistributed(new Socket(currentEngine.getIp(),
-							currentEngine.getTcpPort()), ManagementServiceModel.getCurrentRequestedTask(), model,
-							amount);
-					model.getExecutorTcp().execute(worker);
-					// } else {
-					// ManagementServiceModel.getCurrentRequestedTask().setStatus(TaskStatusEnum.prepared);
-					// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
-					// .printInfo(response.split("#")[0]);
-					// }
-				}
-				activeCompany.getCallback().printInfo(
-						"Execution for task " + ManagementServiceModel.getCurrentRequestedTask().getId() + " started.");
-
-			} catch (UnknownHostException e) {
-				System.out.println("Server not responding.");
-			} catch (IOException e) {
-				System.out.println(e.getMessage());
-			}
-		}
-		return "";
-	}
 }

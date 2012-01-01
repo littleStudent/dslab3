@@ -17,7 +17,7 @@ import com.dslab.entities.GenericTaskEngineEntity;
 public class SchedulerTcpEngineLoadStatusWorker implements Runnable {
 
 	private GenericTaskEngineEntity engine;
-	
+
 	public SchedulerTcpEngineLoadStatusWorker(GenericTaskEngineEntity e) {
 		this.engine = e;
 	}
@@ -25,12 +25,14 @@ public class SchedulerTcpEngineLoadStatusWorker implements Runnable {
 	@Override
 	public void run() {
 		try {
+			System.out.println(engine.getIp());
+			System.out.println(engine.getTcpPort());
 			Socket engineTcpSocket = new Socket(engine.getIp(), engine.getTcpPort());
 			DataOutputStream outToServer = new DataOutputStream(engineTcpSocket.getOutputStream());
 			BufferedReader inFromServer = new BufferedReader(new InputStreamReader(engineTcpSocket.getInputStream()));
 			outToServer.writeBytes("!loadState" + "\n");
 			SchedulerHelper.fillEngineWithStateRequestData(engine, inFromServer.readLine());
-			//engine.setLoad(Integer.parseInt(inFromServer.readLine()));
+			// engine.setLoad(Integer.parseInt(inFromServer.readLine()));
 
 		} catch (UnknownHostException e1) {
 			System.out.println("Server does not respond");

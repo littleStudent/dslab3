@@ -26,6 +26,8 @@ public class ManagementServiceModel {
 	private HashMap<Integer, Double> priceStepsMap = new HashMap<Integer, Double>();
 	private ArrayList<Integer> priceSteps = new ArrayList<Integer>();
 	private ExecutorService executorTcp;
+	private String schedulerKeyPub;
+	private String managerKeyPri;
 
 	protected ManagementServiceModel() {
 		setTasks(new ArrayList<TaskEntity>());
@@ -202,6 +204,22 @@ public class ManagementServiceModel {
 
 	public synchronized void setExecutorTcp(ExecutorService executorTcp) {
 		this.executorTcp = executorTcp;
+	}
+
+	public String getSchedulerKeyPub() {
+		return schedulerKeyPub;
+	}
+
+	public void setSchedulerKeyPub(String schedulerKeyPub) {
+		this.schedulerKeyPub = schedulerKeyPub;
+	}
+
+	public String getManagerKeyPri() {
+		return managerKeyPri;
+	}
+
+	public void setManagerKeyPri(String managerKeyPri) {
+		this.managerKeyPri = managerKeyPri;
 	}
 
 }

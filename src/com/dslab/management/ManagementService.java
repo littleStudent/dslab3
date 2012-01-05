@@ -55,6 +55,8 @@ public class ManagementService extends UnicastRemoteObject implements Management
 				try {
 					props.load(inMan);
 					model.setSchedulerTCPPort(Integer.parseInt(props.getProperty("scheduler.tcp.port")));
+					model.setSchedulerKeyPub(props.getProperty("key.en"));
+					model.setManagerKeyPri(props.getProperty("key.de"));
 				} finally {
 					inReg.close();
 				}

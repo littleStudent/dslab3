@@ -6,9 +6,11 @@ package com.dslab.scheduler;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -17,9 +19,17 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+import org.bouncycastle.util.encoders.Base64;
 
 import com.dslab.Cipher.KeyWorker;
 import com.dslab.Types.GenericTaskEngineStatusEnum;
@@ -110,10 +120,53 @@ public class Scheduler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		authentication();
 		startTcpSocket();
 		startUdpSocket();
 		checkConsoleInput();
 		startDynamicCloudCheck();
+	}
+
+	private static void authentication() {
+		// TODO Auto-generated method stub
+		try {
+			ServerSocket authenticationServerSocket = new ServerSocket(tcpPort);
+			Socket authenticationSocket = authenticationServerSocket.accept();
+			BufferedReader inFromClient = new BufferedReader(new InputStreamReader(
+					authenticationSocket.getInputStream()));
+			DataOutputStream outToClient = new DataOutputStream(authenticationSocket.getOutputStream());
+
+			InputStream is = authenticationSocket.getInputStream();
+			byte[] inputBytes = new byte[684];
+
+			int input = is.read(inputBytes, 0, inputBytes.length);
+			System.out.println(new String(inputBytes));
+			inputBytes = Base64.decode(inputBytes);
+			System.out.println(new String(inputBytes));
+			inputBytes = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", false,
+					model.getPrivateKey(), 1).doFinal(inputBytes);
+			System.out.println(new String(inputBytes));
+			byte[] test = new String(inputBytes).substring(6).getBytes();
+			System.out.println("asdf");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**

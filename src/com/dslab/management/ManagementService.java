@@ -2,15 +2,26 @@ package com.dslab.management;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+import org.bouncycastle.util.encoders.Base64;
 
 import com.dslab.Cipher.KeyWorker;
 import com.dslab.entities.CompanyEntity;
@@ -109,10 +120,63 @@ public class ManagementService extends UnicastRemoteObject implements Management
 			}
 			loadUserProperties();
 			checkConsoleInput();
+			authentication();
 
 		} catch (RemoteException e) {
 			System.err.println("Error creating echo service factory: " + e.getMessage());
 		}
+	}
+
+	private static void authentication() {
+
+		byte[] managerChallenge = KeyWorker.createSecureRandomNumber(32);
+		System.out.println("Base64 encoded Challenge: " + managerChallenge);
+		managerChallenge = Base64.encode(managerChallenge);
+		System.out.println("Base64 encoded Challenge: " + new String(managerChallenge));
+		try {
+			model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		byte[] loginMessage = new byte[managerChallenge.length + "!login".getBytes().length];
+		System.arraycopy(managerChallenge, 0, loginMessage, 0, managerChallenge.length);
+		System.arraycopy("!login ".getBytes(), 0, loginMessage, 0, "!login".getBytes().length);
+		try {
+			loginMessage = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", true,
+					model.getPublicKey(), 1).doFinal(loginMessage);
+		} catch (InvalidKeyException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IllegalBlockSizeException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (BadPaddingException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (NoSuchPaddingException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		DataOutputStream outToServer;
+		try {
+			outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
+			// outToServer.write(KeyWorker.createSecureRandomNumber(32));
+			System.out.println("Sent login message: " + new String(loginMessage));
+			System.out.println("Sent login message encoded: " + new String(Base64.encode(loginMessage)));
+			outToServer.write(Base64.encode(loginMessage));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	public static void loadUserProperties() {

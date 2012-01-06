@@ -125,7 +125,7 @@ public class SchedulerModel {
 	}
 
 	public void setSchedulerPrivateKeyPath(String schedulerPrivatKeyPath) {
-		schedulerPrivatKeyPath = schedulerPrivatKeyPath;
+		schedulerPrivateKeyPath = schedulerPrivatKeyPath;
 	}
 
 	public String getManagementPublicKeyPath() {

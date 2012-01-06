@@ -1,6 +1,8 @@
 package com.dslab.management;
 
 import java.net.Socket;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
@@ -28,6 +30,8 @@ public class ManagementServiceModel {
 	private ExecutorService executorTcp;
 	private String schedulerKeyPub;
 	private String managerKeyPri;
+	private PrivateKey privateKey;
+	private PublicKey publicKey;
 
 	protected ManagementServiceModel() {
 		setTasks(new ArrayList<TaskEntity>());
@@ -220,6 +224,22 @@ public class ManagementServiceModel {
 
 	public void setManagerKeyPri(String managerKeyPri) {
 		this.managerKeyPri = managerKeyPri;
+	}
+
+	public PrivateKey getPrivateKey() {
+		return privateKey;
+	}
+
+	public void setPrivateKey(PrivateKey privateKey) {
+		this.privateKey = privateKey;
+	}
+
+	public PublicKey getPublicKey() {
+		return publicKey;
+	}
+
+	public void setPublicKey(PublicKey publicKey) {
+		this.publicKey = publicKey;
 	}
 
 }

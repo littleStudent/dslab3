@@ -12,6 +12,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.dslab.Cipher.KeyWorker;
 import com.dslab.entities.CompanyEntity;
 import com.dslab.remoteobjects.AdminRemoteObject;
 import com.dslab.remoteobjects.ClientRemoteObject;
@@ -99,6 +100,13 @@ public class ManagementService extends UnicastRemoteObject implements Management
 
 		try {
 			remoteObject = new ManagementService();
+			try {
+				model.setPrivateKey(KeyWorker.readPrivateKey(model.getManagerKeyPri()));
+				model.setPublicKey(KeyWorker.readPublicKey(model.getSchedulerKeyPub()));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			loadUserProperties();
 			checkConsoleInput();
 

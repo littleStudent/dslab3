@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.dslab.Cipher.KeyWorker;
 import com.dslab.Types.GenericTaskEngineStatusEnum;
 import com.dslab.entities.ClientEntity;
 import com.dslab.entities.GenericTaskEngineEntity;
@@ -75,6 +76,8 @@ public class Scheduler {
 				try {
 					props.load(inReg);
 					tcpPort = Integer.parseInt(props.getProperty("tcp.port"));
+					model.setSchedulerPrivateKeyPath(props.getProperty("key.de"));
+					model.setManagementPublicKeyPath(props.getProperty("key.en"));
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -99,6 +102,13 @@ public class Scheduler {
 		} catch (SocketException e) {
 			// TODO Auto-generated catch block
 			System.out.println("Error: unexpected Error occured");
+		}
+		try {
+			model.setPrivateKey(KeyWorker.readPrivateKey(model.getSchedulerPrivateKeyPath()));
+			model.setPublicKey(KeyWorker.readPublicKey(model.getManagementPublicKeyPath()));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		startTcpSocket();
 		startUdpSocket();

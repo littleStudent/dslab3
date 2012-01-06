@@ -14,7 +14,7 @@ import org.bouncycastle.openssl.PasswordFinder;
 
 public class KeyWorker {
 
-	public PrivateKey readPrivateKey(String pathToPrivateKey) throws IOException {
+	public static PrivateKey readPrivateKey(String pathToPrivateKey) throws IOException {
 		PEMReader in = new PEMReader(new FileReader(pathToPrivateKey), new PasswordFinder() {
 			@Override
 			public char[] getPassword() {
@@ -32,12 +32,12 @@ public class KeyWorker {
 		return keyPair.getPrivate();
 	}
 
-	public PublicKey readPublicKey(String pathToPublicKey) throws IOException {
+	public static PublicKey readPublicKey(String pathToPublicKey) throws IOException {
 		PEMReader in = new PEMReader(new FileReader(pathToPublicKey));
 		return (PublicKey) in.readObject();
 	}
 
-	public byte[] createSecureRandomNumber() {
+	public static byte[] createSecureRandomNumber() {
 		SecureRandom secureRandom = new SecureRandom();
 		final byte[] number = new byte[32];
 		secureRandom.nextBytes(number);

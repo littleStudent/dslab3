@@ -1,12 +1,14 @@
 package com.dslab.Cipher;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -14,11 +16,14 @@ import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.openssl.PEMReader;
 import org.bouncycastle.openssl.PasswordFinder;
+import org.bouncycastle.util.encoders.Hex;
 
 public class KeyWorker {
 
@@ -78,4 +83,29 @@ public class KeyWorker {
 		}
 		return crypt;
 	}
+
+	public static Key readSharedSecretKey(String path, String algo) throws IOException {
+		byte[] keyBytes = new byte[1024];
+		FileInputStream fis = new FileInputStream(path);
+		fis.read(keyBytes);
+		fis.close();
+		byte[] input = Hex.decode(keyBytes);
+		// make sure to use the right ALGORITHM for what you want to do
+		// (see text)
+		return new SecretKeySpec(input, algo);
+	}
+
+	public static byte[] createHashMac(Key secretKey, String algo, String message) throws NoSuchAlgorithmException,
+			InvalidKeyException {
+		Mac hMac = Mac.getInstance(algo);
+		hMac.init(secretKey);
+		// MESSAGE is the message to sign in bytes
+		hMac.update(message.getBytes());
+		return hMac.doFinal();
+	}
+
+	public static Boolean verifyHash(byte[] computedHash, byte[] receivedHash) {
+		return MessageDigest.isEqual(computedHash, receivedHash);
+	}
+
 }

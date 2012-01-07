@@ -1,10 +1,14 @@
 package com.dslab.remoteobjects;
 
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 import com.dslab.Types.TypeEnum;
 import com.dslab.client.ClientCallbackRemoteObjectInterface;
+import com.dslab.entities.Output;
 import com.dslab.entities.TaskEntity;
 
 public interface RemoteObjectInterface extends Remote {
@@ -25,7 +29,8 @@ public interface RemoteObjectInterface extends Remote {
 
 	public String getTaskInfoForId(int id) throws RemoteException;
 
-	public String getOutputForId(int id) throws RemoteException;
+	public Output getOutputForId(int id) throws InvalidKeyException, NoSuchAlgorithmException, IOException,
+			RemoteException;
 
 	public String buyCredits(int amount) throws RemoteException;
 

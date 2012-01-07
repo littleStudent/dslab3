@@ -30,6 +30,7 @@ public class ManagementServiceModel {
 	private ExecutorService executorTcp;
 	private String schedulerKeyPub;
 	private String managerKeyPri;
+	private String hmacKeyPath;
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
 
@@ -240,6 +241,14 @@ public class ManagementServiceModel {
 
 	public void setPublicKey(PublicKey publicKey) {
 		this.publicKey = publicKey;
+	}
+
+	public String getHmacKeyPath() {
+		return hmacKeyPath;
+	}
+
+	public void setHmacKeyPath(String hmacKeyPath) {
+		this.hmacKeyPath = hmacKeyPath;
 	}
 
 }

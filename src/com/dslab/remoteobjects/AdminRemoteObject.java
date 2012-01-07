@@ -7,6 +7,7 @@ import java.util.Arrays;
 import com.dslab.Types.TypeEnum;
 import com.dslab.client.ClientCallbackRemoteObjectInterface;
 import com.dslab.entities.CompanyEntity;
+import com.dslab.entities.Output;
 import com.dslab.entities.TaskEntity;
 import com.dslab.management.ManagementServiceModel;
 
@@ -78,7 +79,7 @@ public class AdminRemoteObject extends UnicastRemoteObject implements RemoteObje
 	}
 
 	@Override
-	public String getOutputForId(int id) throws RemoteException {
+	public Output getOutputForId(int id) throws RemoteException {
 		// TODO Auto-generated method stub
 		return null;
 	}

@@ -12,15 +12,19 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 import org.omg.CORBA.Object;
 
+import com.dslab.Cipher.KeyWorker;
 import com.dslab.Types.TaskStatusEnum;
 import com.dslab.Types.TypeEnum;
 import com.dslab.client.ClientCallbackRemoteObjectInterface;
 import com.dslab.entities.CompanyEntity;
 import com.dslab.entities.GenericTaskEngineEntity;
+import com.dslab.entities.Output;
 import com.dslab.entities.TaskEntity;
 import com.dslab.management.ManagementServiceHelper;
 import com.dslab.management.ManagementServiceModel;
@@ -236,20 +240,7 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 					}
 				}
 				model.getCurrentRequestedTask().setDistributedAmount(amount);
-				// String response = inFromServer.readLine();
 
-				// for (GenericTaskEngineEntity currentEngine : engines) {
-				// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
-				// .printInfo("Execution for task " + model.getCurrentRequestedTask().getId() + " started.");
-				//
-				// model.setSchedulerSocket(new Socket(model.getCurrentRequestedTask().getAssignedEngine().getIp(),
-				// model.getCurrentRequestedTask().getAssignedEngine().getTcpPort()));
-				// Runnable worker = new ManagementTcpEngineWorker(model.getSchedulerSocket(),
-				// model.getCurrentRequestedTask(), model);
-				// model.getExecutorTcp().execute(worker);
-				// }
-
-				// if (response.split(" ")[0].equals("!requestEngine")) {
 				int count = 1;
 				for (GenericTaskEngineEntity currentEngine : engines) {
 					model.getCurrentRequestedTask().setAssignedEngine(
@@ -262,12 +253,6 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				}
 				ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
 						.printInfo("Execution for task " + model.getCurrentRequestedTask().getId() + " started.");
-				// } else {
-				// System.out.println("Server: " + response);
-				// model.getCurrentRequestedTask().setStatus(TaskStatusEnum.prepared);
-				// ManagementServiceHelper.getCompanyForName(response.split("#")[1], model).getCallback()
-				// .printInfo(response.split("#")[0]);
-				// }
 
 			} catch (UnknownHostException e) {
 				System.out.println("Server not responding.");
@@ -346,10 +331,10 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 	}
 
 	@Override
-	public String getOutputForId(int id) throws RemoteException {
+	public Output getOutputForId(int id) throws InvalidKeyException, NoSuchAlgorithmException, IOException {
 		String returnValue = "";
 		if (ManagementServiceHelper.getTaskForId(model.getTasks(), id) == null) {
-			return "Error: Task " + id + " does not exist.";
+			return new Output("Error: Task " + id + " does not exist.", null);
 		} else if (ManagementServiceHelper.getTaskForId(model.getTasks(), id).getOwnerCompany() != activeCompany) {
 			throw new RemoteException();
 		}
@@ -387,7 +372,10 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 			returnValue = "Error: Task " + id + " does not belong to your company.";
 		}
 
-		return returnValue;
+		return new Output(returnValue, KeyWorker.createHashMac(
+				KeyWorker.readSharedSecretKey(model.getHmacKeyPath() + "/"
+						+ model.getCurrentRequestedTask().getOwnerCompany().getName() + ".key", "HmacSHA256"),
+				"HmacSHA256", returnValue));
 	}
 
 	@Override

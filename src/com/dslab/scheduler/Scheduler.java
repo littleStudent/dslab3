@@ -148,6 +148,8 @@ public class Scheduler {
 			System.out.println(new String(inputBytes));
 			byte[] test = new String(inputBytes).substring(6).getBytes();
 			System.out.println("asdf");
+			authenticationSocket.close();
+			authenticationServerSocket.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

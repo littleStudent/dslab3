@@ -16,9 +16,13 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
+import com.dslab.Cipher.KeyWorker;
 import com.dslab.Types.TypeEnum;
+import com.dslab.entities.Output;
 import com.dslab.entities.TaskEntity;
 import com.dslab.management.ManagementServiceInterface;
 import com.dslab.remoteobjects.RemoteObjectInterface;
@@ -30,6 +34,7 @@ public class Client {
 	private static BufferedReader inFromEngine = null;
 	private static RemoteObjectInterface remoteObject;
 	private static ClientCallbackRemoteObjectInterface callback;
+	private static String name;
 
 	protected Client() {
 
@@ -66,7 +71,37 @@ public class Client {
 	 */
 	private static void initClient() {
 		clientModel.setPreparedTasks(new ArrayList<TaskEntity>());
+		initProperties();
 		checkConsoleInput();
+	}
+
+	private static void initProperties() {
+		BufferedInputStream inReg;
+		try {
+			inReg = new BufferedInputStream(new FileInputStream("src/client.properties"));
+			if (inReg != null) {
+				java.util.Properties props = new java.util.Properties();
+				try {
+					props.load(inReg);
+					clientModel.setSecretKeyPath(props.getProperty("keys.dir"));
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} finally {
+					try {
+						inReg.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			} else {
+				System.err.println("Properties file not found!");
+			}
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 	}
 
 	/**
@@ -224,18 +259,48 @@ public class Client {
 
 	private static void cmdGetOutput(String input) {
 		try {
-			String output = remoteObject.getOutputForId(Integer.parseInt(input.split(" ")[1]));
-			if (output == null) {
-				System.out.println("Command not allowed. You are not a company.");
+			Output output = remoteObject.getOutputForId(Integer.parseInt(input.split(" ")[1]));
+			String message = output.getMessage();
+			if (KeyWorker.verifyHash(
+					KeyWorker.createHashMac(KeyWorker.readSharedSecretKey(clientModel.getSecretKeyPath() + "/" + name
+							+ ".key", "HmacSHA256"), "HmacSHA256", message), output.getHash())) {
+				if (output == null) {
+					System.out.println("Command not allowed. You are not a company.");
+				} else {
+					System.out.println(output.getMessage());
+				}
 			} else {
-				System.out.println(output);
+				System.out.println("It seems like the message was modified, lets try again");
+				output = remoteObject.getOutputForId(Integer.parseInt(input.split(" ")[1]));
+				message = output.getMessage();
+				if (KeyWorker.verifyHash(
+						KeyWorker.createHashMac(KeyWorker.readSharedSecretKey(clientModel.getSecretKeyPath() + "/"
+								+ name + ".key", "HmacSHA256"), "HmacSHA256", message), output.getHash())) {
+					if (output == null) {
+						System.out.println("Command not allowed. You are not a company.");
+					} else {
+						System.out.println(output.getMessage());
+					}
+				} else {
+					System.out.println("It seems like the message was modified again!");
+
+				}
 			}
+
 		} catch (NumberFormatException e) {
-			// TODO Auto-generated catch block
 			System.out.println("Error: unexpected Error occured");
-			;
 		} catch (RemoteException e) {
+			e.printStackTrace();
 			System.out.println("Error: Task " + input.split(" ")[1] + " does not belong to your company.");
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 	}
@@ -283,6 +348,7 @@ public class Client {
 	 */
 	private static void cmdRegisterClient(String input) {
 		try {
+			name = input.split(" ")[1];
 			remoteObject = (RemoteObjectInterface) getRemoteService().authentication(input.split(" ")[1],
 					input.split(" ")[2]);
 			if (remoteObject != null) {

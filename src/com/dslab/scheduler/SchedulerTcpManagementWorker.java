@@ -4,14 +4,22 @@
 
 package com.dslab.scheduler;
 
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.Socket;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
-import com.dslab.Types.*;
-import com.dslab.entities.ClientEntity;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.bouncycastle.util.encoders.Base64;
+
+import com.dslab.Cipher.KeyWorker;
+import com.dslab.Types.TypeEnum;
 import com.dslab.entities.GenericTaskEngineEntity;
 
 public class SchedulerTcpManagementWorker implements Runnable {
@@ -27,66 +35,47 @@ public class SchedulerTcpManagementWorker implements Runnable {
 	@Override
 	public void run() {
 		try {
-			BufferedReader inFromClient = new BufferedReader(
-					new InputStreamReader(tcpSocket.getInputStream()));
-			DataOutputStream outToClient = new DataOutputStream(
-					tcpSocket.getOutputStream());
+			DataOutputStream outToClient = new DataOutputStream(tcpSocket.getOutputStream());
 			while (true) {
-				String input = inFromClient.readLine();
+				String input = new String(receiveEncrypted());
 				if (input != null) {
 					if (input.split(" ")[0].equals("!requestEngine")) {
-						if (SchedulerHelper
-								.getActiveEngines(model.getEngines()).size() > 0) {
-							GenericTaskEngineEntity bestEngine = SchedulerHelper
-									.getMostEfficientEngine(SchedulerHelper
-											.getActiveEngines(model
-													.getEngines()), TypeEnum
-											.valueOf(input.split(" ")[1]));
+						if (SchedulerHelper.getActiveEngines(model.getEngines()).size() > 0) {
+							GenericTaskEngineEntity bestEngine = SchedulerHelper.getMostEfficientEngine(
+									SchedulerHelper.getActiveEngines(model.getEngines()),
+									TypeEnum.valueOf(input.split(" ")[1]));
 							if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.LOW) {
 								if (bestEngine.getLoad() + 33 > 99) {
-									outToClient
-											.writeBytes("Error: No engine available for execution. Please try again later.#"
+									sendEncrypted("Error: No engine available for execution. Please try again later.#"
 											+ input.split(" ")[2] + "#\n");
 								} else {
-									bestEngine
-											.setLoad(bestEngine.getLoad() + 33);
-									outToClient.writeBytes("!requestEngine "
-											+ bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #"
-											+ input.split(" ")[2] + "#\n");
+									bestEngine.setLoad(bestEngine.getLoad() + 33);
+									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.MIDDLE) {
 								if (bestEngine.getLoad() + 66 > 99) {
-									outToClient
-											.writeBytes("Error: No engine available for execution. Please try again later.#"
+									sendEncrypted("Error: No engine available for execution. Please try again later.#"
 											+ input.split(" ")[2] + "#\n");
 								} else {
-									bestEngine
-											.setLoad(bestEngine.getLoad() + 66);
-									outToClient.writeBytes("!requestEngine "
-											+ bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #"
-											+ input.split(" ")[2] + "#\n");
+									bestEngine.setLoad(bestEngine.getLoad() + 66);
+									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.HIGH) {
 								if (bestEngine.getLoad() + 99 > 99) {
-									outToClient
-											.writeBytes("Error: No engine available for execution. Please try again later.#"
+									sendEncrypted("Error: No engine available for execution. Please try again later.#"
 											+ input.split(" ")[2] + "#\n");
 								} else {
-									bestEngine
-											.setLoad(bestEngine.getLoad() + 99);
-									outToClient.writeBytes("!requestEngine "
-											+ bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #"
-											+ input.split(" ")[2] + "#\n");
+									bestEngine.setLoad(bestEngine.getLoad() + 99);
+									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
 								}
 							}
 
 						} else {
-							outToClient
-									.writeBytes("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n");
+							sendEncrypted("Error: No engine available for execution. Please try again later.#"
+									+ input.split(" ")[2] + "#\n");
 						}
 					}
 				} else {
@@ -96,7 +85,51 @@ public class SchedulerTcpManagementWorker implements Runnable {
 			}
 		} catch (IOException e) {
 
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+	}
+
+	private byte[] receiveEncrypted() throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException,
+			NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, IOException {
+		byte[] inputBytes2 = new byte[300];
+		int result = tcpSocket.getInputStream().read(inputBytes2, 0, inputBytes2.length);
+		byte[] receivedBytes = new byte[result];
+		System.arraycopy(inputBytes2, 0, receivedBytes, 0, result);
+		receivedBytes = Base64.decode(receivedBytes);
+		receivedBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", false,
+				new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
+				model.getCipherStuff().getIvParameter()).doFinal(receivedBytes);
+		receivedBytes = Base64.decode(receivedBytes);
+		return receivedBytes;
+	}
+
+	private void sendEncrypted(String message) throws IllegalBlockSizeException, BadPaddingException,
+			InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException,
+			IOException {
+		byte[] outBytes = new byte[684];
+		outBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", true,
+				new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
+				model.getCipherStuff().getIvParameter()).doFinal(
+				Base64.encode(model.getCipherStuff().getSchedulerChallenge()));
+		outBytes = Base64.encode(message.getBytes());
+		tcpSocket.getOutputStream().write(outBytes);
 	}
 
 }

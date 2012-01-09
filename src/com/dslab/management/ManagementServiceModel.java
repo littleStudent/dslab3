@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.dslab.entities.CipherStuff;
 import com.dslab.entities.CompanyEntity;
 import com.dslab.entities.TaskEntity;
 
@@ -33,11 +34,13 @@ public class ManagementServiceModel {
 	private String hmacKeyPath;
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
+	private CipherStuff cipherStuff;
+	private Boolean authenticated = false;
 
 	protected ManagementServiceModel() {
 		setTasks(new ArrayList<TaskEntity>());
 		setExecutorTcp(Executors.newFixedThreadPool(20));
-
+		setCipherStuff(new CipherStuff());
 	}
 
 	public static java.util.Properties getCompaniesProperty() {
@@ -249,6 +252,22 @@ public class ManagementServiceModel {
 
 	public void setHmacKeyPath(String hmacKeyPath) {
 		this.hmacKeyPath = hmacKeyPath;
+	}
+
+	public CipherStuff getCipherStuff() {
+		return cipherStuff;
+	}
+
+	public void setCipherStuff(CipherStuff cipherStuff) {
+		this.cipherStuff = cipherStuff;
+	}
+
+	public Boolean getAuthenticated() {
+		return authenticated;
+	}
+
+	public void setAuthenticated(Boolean authenticated) {
+		this.authenticated = authenticated;
 	}
 
 }

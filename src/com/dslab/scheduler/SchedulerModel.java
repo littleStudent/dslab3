@@ -8,6 +8,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
+import com.dslab.entities.CipherStuff;
 import com.dslab.entities.ClientEntity;
 import com.dslab.entities.GenericTaskEngineEntity;
 
@@ -21,10 +22,13 @@ public class SchedulerModel {
 	private String managementPublicKeyPath;
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
+	private CipherStuff cipherStuff;
+	private Boolean authenticated = false;
 
 	protected SchedulerModel() {
 		this.clients = new ArrayList<ClientEntity>();
 		this.engines = new ArrayList<GenericTaskEngineEntity>();
+		setCipherStuff(new CipherStuff());
 	}
 
 	public java.util.Properties getCompanies() {
@@ -82,6 +86,14 @@ public class SchedulerModel {
 		GenericTaskEngineEntity g = new GenericTaskEngineEntity(port);
 		engines.add(g);
 		return g;
+	}
+
+	public Boolean checkIfEngineAlreadyExists(int port, String ip) {
+		for (GenericTaskEngineEntity e : engines) {
+			if (e.getTcpPort() == port && e.getIp().equals(ip))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -150,5 +162,21 @@ public class SchedulerModel {
 
 	public void setPublicKey(PublicKey managementKey) {
 		this.publicKey = managementKey;
+	}
+
+	public CipherStuff getCipherStuff() {
+		return cipherStuff;
+	}
+
+	public void setCipherStuff(CipherStuff cipherStuff) {
+		this.cipherStuff = cipherStuff;
+	}
+
+	public Boolean getAuthenticated() {
+		return authenticated;
+	}
+
+	public void setAuthenticated(Boolean authenticated) {
+		this.authenticated = authenticated;
 	}
 }

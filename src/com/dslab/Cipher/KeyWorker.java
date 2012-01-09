@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -13,12 +14,14 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.openssl.PEMReader;
@@ -70,16 +73,25 @@ public class KeyWorker {
 		}
 	}
 
-	public static Cipher getCipherForAlgorithm(String algo, Boolean encryption, Key key, int iv)
-			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public static Cipher getCipherForAlgorithm(String algo, Boolean encryption, Key key, byte[] iv)
+			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
+			InvalidAlgorithmParameterException {
 		Cipher crypt = Cipher.getInstance(algo);
 		// MODE is the encryption/decryption mode
 		// KEY is either a private, public or secret key
 		// IV is an init vector, needed for AES
 		if (encryption) {
-			crypt.init(Cipher.ENCRYPT_MODE, key);
+			if (!Arrays.equals(iv, null)) {
+				crypt.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+			} else {
+				crypt.init(Cipher.ENCRYPT_MODE, key);
+			}
 		} else {
-			crypt.init(Cipher.DECRYPT_MODE, key);
+			if (!Arrays.equals(iv, null)) {
+				crypt.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+			} else {
+				crypt.init(Cipher.DECRYPT_MODE, key);
+			}
 		}
 		return crypt;
 	}

@@ -19,6 +19,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.concurrent.Executors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.util.encoders.Base64;
 
@@ -140,14 +142,66 @@ public class Scheduler {
 			byte[] inputBytes = new byte[684];
 
 			int input = is.read(inputBytes, 0, inputBytes.length);
-			System.out.println(new String(inputBytes));
 			inputBytes = Base64.decode(inputBytes);
-			System.out.println(new String(inputBytes));
 			inputBytes = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", false,
-					model.getPrivateKey(), 1).doFinal(inputBytes);
-			System.out.println(new String(inputBytes));
-			byte[] test = new String(inputBytes).substring(6).getBytes();
-			System.out.println("asdf");
+					model.getPrivateKey(), null).doFinal(inputBytes);
+			byte[] managerChallenge = new byte[inputBytes.length - 7];
+			System.arraycopy(inputBytes, 7, managerChallenge, 0, inputBytes.length - 7);
+			model.getCipherStuff().setManagerChallenge(Base64.decode(managerChallenge));
+
+			byte[] schedulerChallange = KeyWorker.createSecureRandomNumber(32);
+			model.getCipherStuff().setSchedulerChallenge(schedulerChallange);
+			schedulerChallange = Base64.encode(schedulerChallange);
+			byte[] secretKey = KeyWorker.createSecureRandomNumber(32);
+			model.getCipherStuff().setSecretKey(secretKey);
+			secretKey = Base64.encode(secretKey);
+			byte[] ivParameter = KeyWorker.createSecureRandomNumber(16);
+			model.getCipherStuff().setIvParameter(ivParameter);
+			ivParameter = Base64.encode(ivParameter);
+
+			byte[] okMessage = new byte["!ok    ".getBytes().length + managerChallenge.length
+					+ schedulerChallange.length + secretKey.length + ivParameter.length];
+
+			System.arraycopy("!ok ".getBytes(), 0, okMessage, 0, "!ok ".getBytes().length);
+			System.arraycopy(managerChallenge, 0, okMessage, "!ok ".getBytes().length, managerChallenge.length);
+			System.arraycopy(" ".getBytes(), 0, okMessage, "!ok ".getBytes().length + managerChallenge.length,
+					" ".getBytes().length);
+
+			System.arraycopy(schedulerChallange, 0, okMessage, "!ok  ".getBytes().length + managerChallenge.length,
+					schedulerChallange.length);
+			System.arraycopy(" ".getBytes(), 0, okMessage, "!ok  ".getBytes().length + managerChallenge.length
+					+ schedulerChallange.length, " ".getBytes().length);
+
+			System.arraycopy(secretKey, 0, okMessage, "!ok   ".getBytes().length + managerChallenge.length
+					+ schedulerChallange.length, secretKey.length);
+			System.arraycopy(" ".getBytes(), 0, okMessage, "!ok   ".getBytes().length + managerChallenge.length
+					+ schedulerChallange.length + secretKey.length, " ".getBytes().length);
+
+			System.arraycopy(ivParameter, 0, okMessage, "!ok    ".getBytes().length + managerChallenge.length
+					+ schedulerChallange.length + secretKey.length, ivParameter.length);
+
+			okMessage = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", true,
+					model.getPublicKey(), null).doFinal(okMessage);
+
+			okMessage = Base64.encode(okMessage);
+
+			DataOutputStream outToServer;
+			try {
+				outToServer = new DataOutputStream(authenticationSocket.getOutputStream());
+				outToServer.write(okMessage);
+
+				byte[] inputBytes2 = new byte[60];
+				input = is.read(inputBytes2, 0, inputBytes2.length);
+				inputBytes2 = Base64.decode(inputBytes2);
+				inputBytes2 = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", false,
+						new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
+						model.getCipherStuff().getIvParameter()).doFinal(inputBytes2);
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
 			authenticationSocket.close();
 			authenticationServerSocket.close();
 		} catch (IOException e) {
@@ -166,6 +220,9 @@ public class Scheduler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

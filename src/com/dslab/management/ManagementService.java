@@ -6,20 +6,24 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.util.encoders.Base64;
 
@@ -120,8 +124,8 @@ public class ManagementService extends UnicastRemoteObject implements Management
 				e.printStackTrace();
 			}
 			loadUserProperties();
-			checkConsoleInput();
 			authentication();
+			checkConsoleInput();
 
 		} catch (RemoteException e) {
 			System.err.println("Error creating echo service factory: " + e.getMessage());
@@ -131,9 +135,8 @@ public class ManagementService extends UnicastRemoteObject implements Management
 	private static void authentication() {
 
 		byte[] managerChallenge = KeyWorker.createSecureRandomNumber(32);
-		System.out.println("Base64 encoded Challenge: " + managerChallenge);
+		model.getCipherStuff().setManagerChallenge(managerChallenge);
 		managerChallenge = Base64.encode(managerChallenge);
-		System.out.println("Base64 encoded Challenge: " + new String(managerChallenge));
 		try {
 			model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
 		} catch (UnknownHostException e) {
@@ -144,12 +147,12 @@ public class ManagementService extends UnicastRemoteObject implements Management
 			e.printStackTrace();
 		}
 
-		byte[] loginMessage = new byte[managerChallenge.length + "!login".getBytes().length];
-		System.arraycopy(managerChallenge, 0, loginMessage, 0, managerChallenge.length);
-		System.arraycopy("!login ".getBytes(), 0, loginMessage, 0, "!login".getBytes().length);
+		byte[] loginMessage = new byte[managerChallenge.length + "!login".getBytes().length + 1];
+		System.arraycopy("!login ".getBytes(), 0, loginMessage, 0, "!login ".getBytes().length);
+		System.arraycopy(managerChallenge, 0, loginMessage, "!login ".getBytes().length, managerChallenge.length);
 		try {
 			loginMessage = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", true,
-					model.getPublicKey(), 1).doFinal(loginMessage);
+					model.getPublicKey(), null).doFinal(loginMessage);
 		} catch (InvalidKeyException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -165,15 +168,68 @@ public class ManagementService extends UnicastRemoteObject implements Management
 		} catch (NoSuchPaddingException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		DataOutputStream outToServer;
+
 		try {
-			outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
-			// outToServer.write(KeyWorker.createSecureRandomNumber(32));
-			System.out.println("Sent login message: " + new String(loginMessage));
-			System.out.println("Sent login message encoded: " + new String(Base64.encode(loginMessage)));
-			outToServer.write(Base64.encode(loginMessage));
+			DataOutputStream outToScheduler = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
+			outToScheduler = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
+			outToScheduler.write(Base64.encode(loginMessage));
+
+			InputStream is = model.getSchedulerSocket().getInputStream();
+			byte[] inputBytes = new byte[684];
+			int input = is.read(inputBytes, 0, inputBytes.length);
+			inputBytes = Base64.decode(inputBytes);
+			inputBytes = KeyWorker.getCipherForAlgorithm("RSA/NONE/OAEPWithSHA256AndMGF1Padding", false,
+					model.getPrivateKey(), null).doFinal(inputBytes);
+
+			byte[] managerChallengeCheck = new byte[44];
+			byte[] schedulerChallenge = new byte[44];
+			byte[] secretKey = new byte[44];
+			byte[] ivParameter = new byte[24];
+			System.arraycopy(inputBytes, 4, managerChallengeCheck, 0, 44);
+			System.arraycopy(inputBytes, 49, schedulerChallenge, 0, 44);
+			System.arraycopy(inputBytes, 94, secretKey, 0, 44);
+			System.arraycopy(inputBytes, 139, ivParameter, 0, 24);
+			model.getCipherStuff().setSchedulerChallenge(Base64.decode(schedulerChallenge));
+			model.getCipherStuff().setSecretKey(Base64.decode(secretKey));
+			model.getCipherStuff().setIvParameter(Base64.decode(ivParameter));
+
+			if (Arrays.equals(managerChallengeCheck, managerChallenge)) {
+				model.setAuthenticated(true);
+				byte[] outBytes = new byte[684];
+				outBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", true,
+						new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
+						model.getCipherStuff().getIvParameter()).doFinal(schedulerChallenge);
+				outBytes = Base64.encode(outBytes);
+				outToScheduler.write(outBytes);
+			} else {
+				System.out.println("Something went Wrong");
+				model.setAuthenticated(false);
+			}
+			model.getSchedulerSocket().close();
+
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

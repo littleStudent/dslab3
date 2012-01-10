@@ -359,8 +359,13 @@ public class Scheduler {
 					DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 					try {
 						serverSocket.receive(receivePacket);
-						Runnable socketWorker = new SchedulerUdpEngineWorker(model, receivePacket, timeout);
-						executorUdp.execute(socketWorker);
+						if (!model.checkIfEngineAlreadyExists(
+								Integer.parseInt(new String(receivePacket.getData()).split(" ")[1].trim()),
+								receivePacket.getAddress().getHostAddress())) {
+							Runnable socketWorker = new SchedulerUdpEngineWorker(model, receivePacket, timeout);
+							executorUdp.execute(socketWorker);
+						}
+
 					} catch (IOException e) {
 						System.out.println(e.getMessage());
 					}

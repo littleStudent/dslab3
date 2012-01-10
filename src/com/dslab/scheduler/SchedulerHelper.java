@@ -149,6 +149,63 @@ public class SchedulerHelper {
 		return bestEngine;
 	}
 
+	public static GenericTaskEngineEntity getMostEfficientEngineDistributed(ArrayList<GenericTaskEngineEntity> engines,
+			TypeEnum type) {
+		int compareValue = 0;
+		GenericTaskEngineEntity returnEngine = null;
+		ArrayList<GenericTaskEngineEntity> availableEngines = new ArrayList<GenericTaskEngineEntity>(engines);
+		while (returnEngine == null) {
+			GenericTaskEngineEntity bestEngine = availableEngines.get(0);
+			for (GenericTaskEngineEntity e : availableEngines) {
+				if (type == TypeEnum.LOW) {
+					if (e.getLoad() + 33 < 100) {
+						bestEngine = e;
+					}
+				} else if (type == TypeEnum.MIDDLE) {
+					if (e.getLoad() + 66 < 100) {
+						bestEngine = e;
+					}
+				} else {
+					if (e.getLoad() + 99 < 100) {
+						bestEngine = e;
+					}
+				}
+			}
+			for (GenericTaskEngineEntity e : availableEngines) {
+
+				if (type == TypeEnum.LOW) {
+					if (e.getLoad() + 33 < 100) {
+						if (e.getMaxConsumption() - e.getMinConsumption() < bestEngine.getMaxConsumption()
+								- bestEngine.getMinConsumption())
+							bestEngine = e;
+					}
+				} else if (type == TypeEnum.MIDDLE) {
+					if (e.getLoad() + 66 < 100) {
+						if (e.getMaxConsumption() - e.getMinConsumption() < bestEngine.getMaxConsumption()
+								- bestEngine.getMinConsumption())
+							bestEngine = e;
+					}
+				} else {
+					if (e.getLoad() + 99 < 100) {
+						if (e.getMaxConsumption() - e.getMinConsumption() < bestEngine.getMaxConsumption()
+								- bestEngine.getMinConsumption())
+							bestEngine = e;
+					}
+				}
+			}
+			if (bestEngine.getLoad() > compareValue) {
+				availableEngines.remove(bestEngine);
+				if (availableEngines.size() == 0) {
+					availableEngines = new ArrayList<GenericTaskEngineEntity>(engines);
+					compareValue = 100;
+				}
+			} else {
+				return bestEngine;
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * returns all currently active engines
 	 * 

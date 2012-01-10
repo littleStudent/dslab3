@@ -24,7 +24,7 @@ import com.dslab.entities.GenericTaskEngineEntity;
 
 public class SchedulerTcpManagementWorker implements Runnable {
 
-	private SchedulerModel model;
+	private static SchedulerModel model;
 	private Socket tcpSocket;
 
 	public SchedulerTcpManagementWorker(SchedulerModel model, Socket tcpSocket) {
@@ -47,35 +47,73 @@ public class SchedulerTcpManagementWorker implements Runnable {
 							if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.LOW) {
 								if (bestEngine.getLoad() + 33 > 99) {
 									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n").getBytes());
+											+ input.split(" ")[2] + "#").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 33);
 									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.MIDDLE) {
 								if (bestEngine.getLoad() + 66 > 99) {
 									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n").getBytes());
+											+ input.split(" ")[2] + "#").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 66);
 									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.HIGH) {
 								if (bestEngine.getLoad() + 99 > 99) {
 									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n").getBytes());
+											+ input.split(" ")[2] + "#").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 99);
 									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
 								}
 							}
 
 						} else {
 							sendEncrypted(("Error: No engine available for execution. Please try again later.#"
 									+ input.split(" ")[2] + "#\n").getBytes());
+						}
+					} else if (input.split(" ")[0].equals("!requestEngines")) {
+						if (SchedulerHelper.getActiveEngines(model.getEngines()).size() > 0) {
+							GenericTaskEngineEntity bestEngine = SchedulerHelper.getMostEfficientEngineDistributed(
+									SchedulerHelper.getActiveEngines(model.getEngines()),
+									TypeEnum.valueOf(input.split(" ")[1]));
+							if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.LOW) {
+								if (bestEngine.getLoad() + 33 > 99) {
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#").getBytes());
+								} else {
+									bestEngine.setLoad(bestEngine.getLoad() + 33);
+									sendEncrypted(("!requestEngines " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
+								}
+							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.MIDDLE) {
+								if (bestEngine.getLoad() + 66 > 99) {
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#").getBytes());
+								} else {
+									bestEngine.setLoad(bestEngine.getLoad() + 66);
+									sendEncrypted(("!requestEngines " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
+								}
+							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.HIGH) {
+								if (bestEngine.getLoad() + 99 > 99) {
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#").getBytes());
+								} else {
+									bestEngine.setLoad(bestEngine.getLoad() + 99);
+									sendEncrypted(("!requestEngines " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#").getBytes());
+								}
+							}
+
+						} else {
+							sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+									+ input.split(" ")[2] + "#").getBytes());
 						}
 					}
 				} else {

@@ -84,20 +84,20 @@ public class ManagementTcpEngineWorkerDistributed implements Runnable {
 						break;
 					}
 				}
-				if (taskToExecute.getDistributedAmount() == taskToExecute.getOutputs().size()) {
-					taskToExecute.setStatus(TaskStatusEnum.finished);
-					taskToExecute.setCosts((int) (taskToExecute.getCosts() - taskToExecute.getCosts()
-							* ManagementServiceHelper.getDiscountForTaskCount(model, taskToExecute.getOwnerCompany())));
-					if (taskToExecute.getType() == TypeEnum.LOW) {
-						taskToExecute.getOwnerCompany().setLowCount(taskToExecute.getOwnerCompany().getLowCount() + 1);
-					} else if (taskToExecute.getType() == TypeEnum.MIDDLE) {
-						taskToExecute.getOwnerCompany().setMiddleCount(
-								taskToExecute.getOwnerCompany().getMiddleCount() + 1);
-					} else if (taskToExecute.getType() == TypeEnum.HIGH) {
-						taskToExecute.getOwnerCompany()
-								.setHighCount(taskToExecute.getOwnerCompany().getHighCount() + 1);
-					}
-					if (taskToExecute.getOwnerCompany().getCredits() < taskToExecute.getCosts()) {
+
+				taskToExecute.setStatus(TaskStatusEnum.finished);
+				taskToExecute.setCosts((int) (taskToExecute.getCosts() - taskToExecute.getCosts()
+						* ManagementServiceHelper.getDiscountForTaskCount(model, taskToExecute.getOwnerCompany())));
+				if (taskToExecute.getType() == TypeEnum.LOW) {
+					taskToExecute.getOwnerCompany().setLowCount(taskToExecute.getOwnerCompany().getLowCount() + 1);
+				} else if (taskToExecute.getType() == TypeEnum.MIDDLE) {
+					taskToExecute.getOwnerCompany()
+							.setMiddleCount(taskToExecute.getOwnerCompany().getMiddleCount() + 1);
+				} else if (taskToExecute.getType() == TypeEnum.HIGH) {
+					taskToExecute.getOwnerCompany().setHighCount(taskToExecute.getOwnerCompany().getHighCount() + 1);
+				}
+				if (taskToExecute.getOwnerCompany().getCredits() < taskToExecute.getCosts()) {
+					if (ManagementServiceHelper.checkDistributedMessagesArrived(taskToExecute.getOutputs())) {
 						taskToExecute
 								.getOwnerCompany()
 								.getCallback()
@@ -105,16 +105,18 @@ public class ManagementTcpEngineWorkerDistributed implements Runnable {
 										"Execution of task " + taskToExecute.getId() + " finished. You need at least "
 												+ taskToExecute.getCosts() + " credits to see the results of task "
 												+ taskToExecute.getId());
-						taskToExecute.setPayed(false);
-					} else {
+					}
+					taskToExecute.setPayed(false);
+				} else {
+					if (ManagementServiceHelper.checkDistributedMessagesArrived(taskToExecute.getOutputs())) {
 						taskToExecute.getOwnerCompany().getCallback()
 								.printInfo("Execution of task " + taskToExecute.getId() + " finished.");
-						taskToExecute.getOwnerCompany().setCredits(
-								taskToExecute.getOwnerCompany().getCredits() - taskToExecute.getCosts());
-						taskToExecute.setPayed(true);
-						taskToExecute.getOwnerCompany().setPayedTasksCount(
-								taskToExecute.getOwnerCompany().getPayedTasksCount() + 1);
 					}
+					taskToExecute.getOwnerCompany().setCredits(
+							taskToExecute.getOwnerCompany().getCredits() - taskToExecute.getCosts());
+					taskToExecute.setPayed(true);
+					taskToExecute.getOwnerCompany().setPayedTasksCount(
+							taskToExecute.getOwnerCompany().getPayedTasksCount() + 1);
 				}
 
 				// taskToExecute.getOwnerCompany().getCallback().printInfo(taskToExecute.getOwnerCompany().getOutputText());

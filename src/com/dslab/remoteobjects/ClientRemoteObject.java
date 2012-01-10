@@ -1,14 +1,12 @@
 package com.dslab.remoteobjects;
 
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
@@ -170,11 +168,9 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				// clientModel.setInput(input);
 				activeCompany.setCallback(callback);
 				model.setCurrentRequestedTask(currentTask);
-				DataOutputStream outToScheduler = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
 
-				byte[] outBytes = sendEncrypted(currentTask,
-						("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName()).getBytes());
-				outToScheduler.write(outBytes);
+				sendEncrypted(("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName())
+						.getBytes());
 
 				// outToScheduler.writeBytes("!requestEngine " + currentTask.getType().name() + " "
 				// + activeCompany.getName() + "\n");
@@ -230,7 +226,7 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 
 	private byte[] receiveEncrypted() throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException,
 			NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, IOException {
-		byte[] inputBytes2 = new byte[684];
+		byte[] inputBytes2 = new byte[2000];
 		InputStream is = model.getSchedulerSocket().getInputStream();
 		int result = is.read(inputBytes2, 0, inputBytes2.length);
 		byte[] receivedBytes = new byte[result];
@@ -243,24 +239,24 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 		return receivedBytes;
 	}
 
-	private byte[] sendEncrypted(TaskEntity currentTask, byte[] message) throws IllegalBlockSizeException,
-			BadPaddingException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
-			InvalidAlgorithmParameterException {
+	private void sendEncrypted(byte[] message) throws IllegalBlockSizeException, BadPaddingException,
+			InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException,
+			IOException {
+		DataOutputStream outToScheduler = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
 		byte[] outBytes = new byte[684];
 		outBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", true,
 				new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
 				model.getCipherStuff().getIvParameter()).doFinal(Base64.encode(message));
 		outBytes = Base64.encode(outBytes);
-		return outBytes;
+		outToScheduler.write(outBytes);
 	}
 
 	@Override
 	public String executeDistributedForId(int id, int amount, ClientCallbackRemoteObjectInterface callback, String call)
 			throws RemoteException {
-		if (model.getSchedulerSocket() == null) {
+		if (model.getSchedulerSocket() == null || model.getSchedulerSocket().isClosed()) {
 			try {
 				model.setSchedulerSocket(new Socket(model.getSchedulerHost(), model.getSchedulerTCPPort()));
-				// startSchedulerListener();
 			} catch (UnknownHostException e) {
 				return "Error: Scheduler is not reachable";
 			} catch (IOException e) {
@@ -279,22 +275,21 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 			currentTask.setStatus(TaskStatusEnum.executing);
 			currentTask.setCosts(0);
 			try {
-				// clientModel.setInput(input);
+				System.out.println("blalba");
 				activeCompany.setCallback(callback);
 				model.setCurrentRequestedTask(currentTask);
 				ArrayList<GenericTaskEngineEntity> engines = new ArrayList<GenericTaskEngineEntity>();
-				BufferedReader inFromServer = new BufferedReader(new InputStreamReader(model.getSchedulerSocket()
-						.getInputStream()));
-				DataOutputStream outToServer = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
-				outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName()
-						+ "\n");
+
+				// sendEncrypted(("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName())
+				// .getBytes());
+
 				String response = null;
 				for (int i = 0; i < amount; i++) {
-					outToServer.writeBytes("!requestEngine " + currentTask.getType().name() + " "
-							+ activeCompany.getName() + "\n");
+					sendEncrypted(("!requestEngines " + currentTask.getType().name() + " " + activeCompany.getName())
+							.getBytes());
 
-					response = inFromServer.readLine();
-					if (response.split(" ")[0].equals("!requestEngine")) {
+					response = new String(receiveEncrypted());
+					if (response.split(" ")[0].equals("!requestEngines")) {
 						engines.add(new GenericTaskEngineEntity(response.split(" ")[1], Integer.parseInt(response
 								.split(" ")[2])));
 					}
@@ -318,6 +313,24 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				System.out.println("Server not responding.");
 			} catch (IOException e) {
 				System.out.println(e.getMessage());
+			} catch (InvalidKeyException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalBlockSizeException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (BadPaddingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoSuchPaddingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InvalidAlgorithmParameterException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		return "";

@@ -46,36 +46,36 @@ public class SchedulerTcpManagementWorker implements Runnable {
 									TypeEnum.valueOf(input.split(" ")[1]));
 							if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.LOW) {
 								if (bestEngine.getLoad() + 33 > 99) {
-									sendEncrypted("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n");
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#\n").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 33);
-									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
+									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.MIDDLE) {
 								if (bestEngine.getLoad() + 66 > 99) {
-									sendEncrypted("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n");
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#\n").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 66);
-									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
+									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
 								}
 							} else if (TypeEnum.valueOf(input.split(" ")[1]) == TypeEnum.HIGH) {
 								if (bestEngine.getLoad() + 99 > 99) {
-									sendEncrypted("Error: No engine available for execution. Please try again later.#"
-											+ input.split(" ")[2] + "#\n");
+									sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+											+ input.split(" ")[2] + "#\n").getBytes());
 								} else {
 									bestEngine.setLoad(bestEngine.getLoad() + 99);
-									sendEncrypted("!requestEngine " + bestEngine.getIp() + " "
-											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n");
+									sendEncrypted(("!requestEngine " + bestEngine.getIp() + " "
+											+ bestEngine.getTcpPort() + " #" + input.split(" ")[2] + "#\n").getBytes());
 								}
 							}
 
 						} else {
-							sendEncrypted("Error: No engine available for execution. Please try again later.#"
-									+ input.split(" ")[2] + "#\n");
+							sendEncrypted(("Error: No engine available for execution. Please try again later.#"
+									+ input.split(" ")[2] + "#\n").getBytes());
 						}
 					}
 				} else {
@@ -120,15 +120,14 @@ public class SchedulerTcpManagementWorker implements Runnable {
 		return receivedBytes;
 	}
 
-	private void sendEncrypted(String message) throws IllegalBlockSizeException, BadPaddingException,
+	private void sendEncrypted(byte[] message) throws IllegalBlockSizeException, BadPaddingException,
 			InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException,
 			IOException {
 		byte[] outBytes = new byte[684];
 		outBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", true,
 				new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
-				model.getCipherStuff().getIvParameter()).doFinal(
-				Base64.encode(model.getCipherStuff().getSchedulerChallenge()));
-		outBytes = Base64.encode(message.getBytes());
+				model.getCipherStuff().getIvParameter()).doFinal(Base64.encode(message));
+		outBytes = Base64.encode(outBytes);
 		tcpSocket.getOutputStream().write(outBytes);
 	}
 

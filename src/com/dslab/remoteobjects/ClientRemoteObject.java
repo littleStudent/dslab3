@@ -172,8 +172,8 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 				model.setCurrentRequestedTask(currentTask);
 				DataOutputStream outToScheduler = new DataOutputStream(model.getSchedulerSocket().getOutputStream());
 
-				byte[] outBytes = sendEncrypted(currentTask, ("!requestEngine " + currentTask.getType().name() + " "
-						+ activeCompany.getName() + "\n").getBytes());
+				byte[] outBytes = sendEncrypted(currentTask,
+						("!requestEngine " + currentTask.getType().name() + " " + activeCompany.getName()).getBytes());
 				outToScheduler.write(outBytes);
 
 				// outToScheduler.writeBytes("!requestEngine " + currentTask.getType().name() + " "
@@ -232,11 +232,15 @@ public class ClientRemoteObject extends UnicastRemoteObject implements RemoteObj
 			NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, IOException {
 		byte[] inputBytes2 = new byte[684];
 		InputStream is = model.getSchedulerSocket().getInputStream();
-		is.read(inputBytes2, 0, inputBytes2.length);
-		inputBytes2 = Base64.decode(inputBytes2);
-		return KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", false,
+		int result = is.read(inputBytes2, 0, inputBytes2.length);
+		byte[] receivedBytes = new byte[result];
+		System.arraycopy(inputBytes2, 0, receivedBytes, 0, result);
+		receivedBytes = Base64.decode(receivedBytes);
+		receivedBytes = KeyWorker.getCipherForAlgorithm("AES/CTR/NoPadding", false,
 				new SecretKeySpec(model.getCipherStuff().getSecretKey(), "AES"),
-				model.getCipherStuff().getIvParameter()).doFinal(inputBytes2);
+				model.getCipherStuff().getIvParameter()).doFinal(receivedBytes);
+		receivedBytes = Base64.decode(receivedBytes);
+		return receivedBytes;
 	}
 
 	private byte[] sendEncrypted(TaskEntity currentTask, byte[] message) throws IllegalBlockSizeException,

@@ -2,6 +2,7 @@ package com.dslab.Cipher;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,22 +31,31 @@ import org.bouncycastle.util.encoders.Hex;
 
 public class KeyWorker {
 
-	public static PrivateKey readPrivateKey(String pathToPrivateKey) throws IOException {
-		PEMReader in = new PEMReader(new FileReader(pathToPrivateKey), new PasswordFinder() {
-			@Override
-			public char[] getPassword() {
-				// reads the password from standard input for decrypting the private key
-				System.out.println("Enter pass phrase:");
-				try {
-					return new BufferedReader(new InputStreamReader(System.in)).readLine().toCharArray();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					return null;
+	public static PrivateKey readPrivateKey(String pathToPrivateKey) throws FileNotFoundException {
+		while (true) {
+			PEMReader in = new PEMReader(new FileReader(pathToPrivateKey), new PasswordFinder() {
+				@Override
+				public char[] getPassword() {
+					// reads the password from standard input for decrypting the private key
+					System.out.println("Enter pass phrase:");
+					try {
+						return new BufferedReader(new InputStreamReader(System.in)).readLine().toCharArray();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						return null;
+					}
 				}
+			});
+			KeyPair keyPair;
+			try {
+				keyPair = (KeyPair) in.readObject();
+				return keyPair.getPrivate();
+			} catch (IOException e) {
+				System.out.println("Wrong password, please try again: ");
+				// TODO Auto-generated catch block
+				// e.printStackTrace();
 			}
-		});
-		KeyPair keyPair = (KeyPair) in.readObject();
-		return keyPair.getPrivate();
+		}
 	}
 
 	public static PublicKey readPublicKey(String pathToPublicKey) throws IOException {
